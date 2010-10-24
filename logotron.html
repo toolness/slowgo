@@ -48,7 +48,8 @@ var Logo = {
             name: state,
             value: str.slice(stateStartI, i),
             start: stateStartI,
-            end: i
+            end: i,
+            query: null
           });
         state = name;
         stateStartI = i;
@@ -87,6 +88,7 @@ $(window).ready(function() {
         var span = $('<span class="token"></span>');
         span.addClass(token.name);
         span.text(token.value);
+        token.query = span;
         $("#rendered-code").append(span);
       });
     }
