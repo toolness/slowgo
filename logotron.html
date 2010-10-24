@@ -77,7 +77,8 @@ var Logo = {
       
       newTokens.push({
         name: 'end-of-file',
-        value: null
+        value: null,
+        query: $()
       });
 
       return newTokens;
@@ -118,21 +119,21 @@ var Logo = {
             };
             token.query.addClass("function-call");
             vocabulary[token.value].args.forEach(function(arg) {
+              if (statement.start.query.hasClass("broken"))
+                return;
               advance();
-              if (token && token.name == "word") {
+              if (token.name == "word") {
                 token.query.addClass("argument");
                 statement.args.push(token);
               } else {
-                statement.token.query.addClass("broken");
-                if (token)
-                  token.query.addClass("unknown-token");
+                statement.start.query.addClass("broken");
+                token.query.addClass("unexpected-token");
               }
             });
-          } else {
+          } else
             token.query.addClass("unknown-name");
-          }
         } else
-          token.query.addClass("unknown-token");
+          token.query.addClass("unexpected-token");
         return statement;
       }
 
@@ -199,7 +200,11 @@ $(window).ready(function() {
   color: gray;
 }
 
-.token.unknown-name, .token.unknown-token, token.expected-word {
+.token.broken {
+  text-decoration: line-through;
+}
+
+.token.unknown-name, .token.unexpected-token {
   color: red;
 }
 
