@@ -149,7 +149,12 @@ var Logo = {
         return statements;
       }
 
-      return processStatementList();
+      var program = processStatementList();
+      while (i < tokens.length) {
+        token.query.addClass("unparsed");
+        advance();
+      }
+      return program;
     }
 
     return parse(stripWhitespaceAndComments(tokens));
@@ -202,6 +207,10 @@ $(window).ready(function() {
 
 .token.broken {
   text-decoration: line-through;
+}
+
+.token.unparsed {
+  color: #c0c0c0;
 }
 
 .token.unknown-name, .token.unexpected-token {
