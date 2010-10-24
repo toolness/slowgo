@@ -8,13 +8,13 @@ var Logo = {
   LITERALS: /[ \[\]]/,
   tokenize: function Logo_tokenize(str) {
     var tokens = [];
-    var state = 'blank';
+    var state = 'whitespace';
     var stateStartI = 0;
     var i;
     var letter;
 
     var stateMethods = {
-      blank: function() {
+      whitespace: function() {
         if (Logo.WHITESPACE.test(letter))
           return;
         if (Logo.LITERALS.test(letter))
@@ -25,7 +25,7 @@ var Logo = {
       },
       word: function() {
         if (Logo.WHITESPACE.test(letter))
-          return setState('blank');
+          return setState('whitespace');
         if (Logo.LITERALS.test(letter))
           return setState('characterSymbol');
         if (letter == ';')
@@ -33,11 +33,11 @@ var Logo = {
       },
       comment: function() {
         if (letter == '\n')
-          setState('blank');
+          setState('whitespace');
       },
       characterSymbol: function() {
-        setState('blank');
-        this.blank();
+        setState('whitespace');
+        this.whitespace();
       }
     };
 
