@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<title>Logotron!</title>
+<script>
+var Logo = {
+  WHITESPACE: /[ \r\n\t]/,
+  LITERALS: /[ \[\]]/,
+  tokenize: function Logo_tokenize(str) {
+    var tokens = [];
+    var state = 'blank';
+    var stateStartI = 0;
+    var i;
+    var letter;
+
+    var stateMethods = {
+      blank: function() {
+        if (Logo.WHITESPACE.test(letter))
+          return;
+        if (Logo.LITERALS.test(letter))
+          return setState('characterSymbol');
+        if (letter == ';')
+          return setState('comment');
+        setState('word');
+      },
+      word: function() {
+        if (Logo.WHITESPACE.test(letter))
+          return setState('blank');
+        if (Logo.LITERALS.test(letter))
+          return setState('characterSymbol');
+        if (letter == ';')
+          return setState('comment');
+      },
+      comment: function() {
+        if (letter == '\n')
+          setState('blank');
+      },
+      characterSymbol: function() {
+        setState('blank');
+        this.blank();
+      }
+    };
+
+    function setState(name) {
+      if (state != name) {
+        if (i > stateStartI)
+          tokens.push({
+            name: state,
+            value: str.slice(stateStartI, i),
+            start: stateStartI,
+            end: i
+          });
+        state = name;
+        stateStartI = i;
+      }
+    }
+
+    for (i = 0; i < str.length; i++) {
+      letter = str[i];      
+      stateMethods[state]();
+    }
+
+    setState(null);
+    
+    return tokens;
+  }
+};
+
+onload = function() {
+  var code = document.getElementById('code');
+  var lastCodeValue;
+  
+  setInterval(function() {
+    if (code.value != lastCodeValue) {
+      lastCodeValue = code.value;
+      var tokens = Logo.tokenize(lastCodeValue);
+      console.log(JSON.stringify(tokens, null, 2));
+    }
+  }, 500);
+}
+</script>
+<style>
+#code {
+  width: 40em;
+  height: 40em;
+  outline: none;
+  font-family: Monaco, monospace;
+  border: 1px dotted gray;
+  padding: 1em;
+}
+</style>
+<textarea id="code"></textarea>
+<p>Hi.</p>
