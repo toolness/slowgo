@@ -45,10 +45,12 @@ var Logo = {
       if (state != name) {
         if (i > stateStartI)
           tokens.push({
+            id: tokens.length,
             name: state,
             value: str.slice(stateStartI, i),
             start: stateStartI,
             end: i,
+            tags: [],
             query: null
           });
         state = name;
@@ -64,6 +66,92 @@ var Logo = {
     setState(null);
     
     return tokens;
+  },
+  parse: function Logo_parse(tokens) {
+    function stripWhitespaceAndComments(tokens) {
+      var newTokens = [];
+      tokens.forEach(function(token) {
+        if (token.name != 'whitespace' && token.name != 'comment')
+          newTokens.push(token);
+      });
+      
+      newTokens.push({
+        name: 'end-of-file',
+        value: null
+      });
+
+      return newTokens;
+    }
+
+    function parse(tokens) {
+      var vocabulary = {
+        fd: {
+          args: [":amount"]
+        },
+        rt: {
+          args: [":amount"]
+        }
+      };
+      var keywords = {};
+      var i = 0;
+      var token = tokens[i];
+
+      function advance() {
+        token = tokens[++i];
+      }
+
+      function processStatement() {
+        var statement = null;
+        
+        if (token.name == 'end-of-file')
+          return statement;
+        
+        if (token.name == 'word') {
+          if (token.value in keywords) {
+            statement = keywords[token.value].process();
+          } else if (token.value in vocabulary) {
+            statement = {
+              name: token.value,
+              type: 'call',
+              start: token,
+              args: []
+            };
+            token.query.addClass("function-call");
+            vocabulary[token.value].args.forEach(function(arg) {
+              advance();
+              if (token && token.name == "word") {
+                token.query.addClass("argument");
+                statement.args.push(token);
+              } else {
+                statement.token.query.addClass("broken");
+                if (token)
+                  token.query.addClass("unknown-token");
+              }
+            });
+          } else {
+            token.query.addClass("unknown-name");
+          }
+        } else
+          token.query.addClass("unknown-token");
+        return statement;
+      }
+
+      function processStatementList() {
+        var statements = [];
+        while (i < tokens.length) {
+          var statement = processStatement();
+          if (!statement)
+            return statements;
+          statements.push(statement);
+          advance();
+        }
+        return statements;
+      }
+
+      return processStatementList();
+    }
+
+    return parse(stripWhitespaceAndComments(tokens));
   }
 };
 
@@ -91,6 +179,7 @@ $(window).ready(function() {
         token.query = span;
         $("#rendered-code").append(span);
       });
+      console.log(Logo.parse(tokens));
     }
     $(this).hide();
     $("#rendered-code").show();
@@ -108,6 +197,10 @@ $(window).ready(function() {
 
 .token.characterSymbol {
   color: gray;
+}
+
+.token.unknown-name, .token.unknown-token, token.expected-word {
+  color: red;
 }
 
 .code {
