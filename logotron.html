@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <meta charset="utf-8">
 <title>Logotron!</title>
+<script src="jquery.min.js"></script>
 <script>
 var Logo = {
   WHITESPACE: /[ \r\n\t]/,
@@ -65,28 +66,57 @@ var Logo = {
   }
 };
 
-onload = function() {
-  var code = document.getElementById('code');
+$(window).ready(function() {
   var lastCodeValue;
+
+  $("#raw-code").hide();
+  $("#rendered-code").show();
+  $("#rendered-code").click(function() {
+    $(this).hide();
+    $("#raw-code").show();
+    $("#raw-code").focus();
+  });
   
-  setInterval(function() {
-    if (code.value != lastCodeValue) {
-      lastCodeValue = code.value;
+  $("#raw-code").blur(function() {
+    var currVal = $(this).val();
+    if (currVal != lastCodeValue) {
+      lastCodeValue = currVal;
       var tokens = Logo.tokenize(lastCodeValue);
-      console.log(JSON.stringify(tokens, null, 2));
+      $("#rendered-code").empty();
+      tokens.forEach(function(token) {
+        var span = $('<span class="token"></span>');
+        span.addClass(token.name);
+        span.text(token.value);
+        $("#rendered-code").append(span);
+      });
     }
-  }, 500);
-}
+    $(this).hide();
+    $("#rendered-code").show();
+  });
+});
 </script>
 <style>
-#code {
+#rendered-code span {
+  white-space: pre-wrap;
+}
+
+.token.comment {
+  color: firebrick;
+}
+
+.token.characterSymbol {
+  color: gray;
+}
+
+.code {
   width: 40em;
   height: 40em;
   outline: none;
   font-family: Monaco, monospace;
+  font-size: 10pt;
   border: 1px dotted gray;
   padding: 1em;
 }
 </style>
-<textarea id="code"></textarea>
-<p>Hi.</p>
+<textarea id="raw-code" class="code"></textarea>
+<div id="rendered-code" class="code"></div>
