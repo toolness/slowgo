@@ -96,6 +96,44 @@ var Logo = {
         }
       };
       var keywords = {
+        repeat: function() {
+          var repeat = {
+            times: null,
+            start: token,
+            statements: []
+          };
+          token.tags.push("control-structure");
+          advance();
+          if (token.name == "word") {
+            repeat.times = token;
+            advance();
+            if (token.name == "characterSymbol" &&
+                token.value == "[") {
+              advance();
+              while (!(token.name == "characterSymbol" &&
+                       token.value == "]") &&
+                     !(token.name == "end-of-file")) {
+                var statement = processStatement();
+                if (!statement)
+                  break;
+                repeat.statements.push(statement);
+                advance();
+              }
+              if (!(token.name == "characterSymbol" &&
+                    token.value == "]"))
+                error({type: "end-not-found",
+                       fallback: repeat.start,
+                       message: "I couldn't find the end of the " +
+                                "repeat block."});
+            } else
+              error({type: "unexpected-token",
+                     message: "I expected a [ here."});
+          } else
+            error({type: "unexpected-token",
+                   message: "I expected a word indicating " +
+                            "the number of times to repeat here."});
+          return repeat;
+        },
         to: function() {
           var defn = {
             type: 'definition',
@@ -142,7 +180,9 @@ var Logo = {
       var errorsFound = false;
 
       function advance() {
-        token = tokens[++i];
+        i++;
+        if (i < tokens.length)
+          token = tokens[i];
       }
 
       function error(options) {
