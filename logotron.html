@@ -1,7 +1,9 @@
 <!DOCTYPE html>
 <meta charset="utf-8">
 <title>Logotron!</title>
+<link rel="stylesheet" href="tipsy.css">
 <script src="jquery.min.js"></script>
+<script src="jquery.tipsy.js"></script>
 <script>
 var Logo = {
   WHITESPACE: /[ \r\n\t]/,
@@ -50,7 +52,7 @@ var Logo = {
             value: str.slice(stateStartI, i),
             start: stateStartI,
             end: i,
-            tags: [],
+            messages: [],
             query: null
           });
         state = name;
@@ -123,10 +125,13 @@ var Logo = {
               defn.statements.push(statement);
               advance();
             }
-            if (!(token.name == "word" && token.value == "end"))
+            if (!(token.name == "word" && token.value == "end")) {
               defn.start.query.addClass("broken");
+              defn.start.messages.push("I couldn't find the end of " +
+                                       "this definition.");
+            }
           } else
-            token.query.addClass("unexpected-token");
+            token.query.addClass("fatal unexpected-token");
           return defn;
         }
       };
@@ -163,13 +168,13 @@ var Logo = {
                 statement.args.push(token);
               } else {
                 statement.start.query.addClass("broken");
-                token.query.addClass("unexpected-token");
+                token.query.addClass("fatal unexpected-token");
               }
             });
           } else
-            token.query.addClass("unknown-name");
+            token.query.addClass("fatal unknown-name");
         } else
-          token.query.addClass("unexpected-token");
+          token.query.addClass("fatal unexpected-token");
         return statement;
       }
 
@@ -221,7 +226,14 @@ $(window).ready(function() {
         token.query = span;
         $("#rendered-code").append(span);
       });
-      console.log(Logo.parse(tokens));
+      var program = Logo.parse(tokens);
+      tokens.forEach(function(token) {
+        if (token.messages.length) {
+          var message = token.messages.join(" ");
+          token.query.attr("title", message);
+          token.query.tipsy({gravity: 'nw'});
+        }
+      });
     }
     $(this).hide();
     $("#rendered-code").show();
@@ -249,7 +261,7 @@ $(window).ready(function() {
   color: #c0c0c0;
 }
 
-.token.unknown-name, .token.unexpected-token {
+.token.fatal {
   color: red;
 }
 
