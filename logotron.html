@@ -124,7 +124,7 @@ var Logo = {
               advance();
             }
             if (!(token.name == "word" && token.value == "end"))
-              defn.start.addClass("broken");
+              defn.start.query.addClass("broken");
           } else
             token.query.addClass("unexpected-token");
           return defn;
