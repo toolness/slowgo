@@ -109,10 +109,11 @@ var Logo = {
             advance();
             if (token.name == "characterSymbol" &&
                 token.value == "[") {
+              var startBracket = token;
               advance();
               processStatementList({
                 statements: repeat.statements,
-                start: repeat.start,
+                start: startBracket,
                 name: "repeat block",
                 until: {name: "characterSymbol", value: "]"},
               });
@@ -249,18 +250,19 @@ var Logo = {
                           name + "."});
       }
 
-      var program = [];
+      var program = {
+        statements: []
+      };
 
-      processStatementList({statements: program});
+      processStatementList({statements: program.statements});
 
       while (!eof()) {
         token.tags.push("unparsed");
         advance();
       }
-      return {
-        program: program,
-        errorsFound: errorsFound
-      };
+
+      program.errorsFound = errorsFound;
+      return program;
     }
 
     return parse(stripWhitespaceAndComments(tokens));
