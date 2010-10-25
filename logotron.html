@@ -185,7 +185,7 @@ var Logo = {
                 error({type: "unexpected-token",
                        fallback: statement.start,
                        message: "I was expecting a value for " +
-                                arg + "."});
+                                arg + " for " + statement.name + "."});
             });
           } else
             error({type: "unknown-name",
