@@ -110,21 +110,12 @@ var Logo = {
             if (token.name == "characterSymbol" &&
                 token.value == "[") {
               advance();
-              while (!(token.name == "characterSymbol" &&
-                       token.value == "]") &&
-                     !(token.name == "end-of-file")) {
-                var statement = processStatement();
-                if (!statement)
-                  break;
-                repeat.statements.push(statement);
-                advance();
-              }
-              if (!(token.name == "characterSymbol" &&
-                    token.value == "]"))
-                error({type: "end-not-found",
-                       fallback: repeat.start,
-                       message: "I couldn't find the end of the " +
-                                "repeat block."});
+              processStatementList({
+                statements: repeat.statements,
+                start: repeat.start,
+                name: "repeat block",
+                until: {name: "characterSymbol", value: "]"},
+              });
             } else
               error({type: "unexpected-token",
                      message: "I expected a [ here."});
@@ -155,19 +146,12 @@ var Logo = {
               defn.args.push(token);
               advance();
             }
-            while (!(token.name == "word" && token.value == "end") &&
-                   !(token.name == "end-of-file")) {
-              var statement = processStatement();
-              if (!statement)
-                break;
-              defn.statements.push(statement);
-              advance();
-            }
-            if (!(token.name == "word" && token.value == "end"))
-              error({type: "end-not-found",
-                     fallback: defn.start,
-                     message: "I couldn't find the end of this " +
-                              "definition."});
+            processStatementList({
+              statements: defn.statements,
+              start: defn.start,
+              name: "definition",
+              until: {name: "word", value: "end"},
+            });
           } else
             error({type: "unexpected-token",
                    message: "I was expecting the name of a new word " +
@@ -185,11 +169,15 @@ var Logo = {
           token = tokens[i];
       }
 
+      function eof() {
+        return (token.name == 'end-of-file');
+      }
+
       function error(options) {
         if (!errorsFound) {
           errorsFound = true;
           var errorToken = token;
-          if (token.name == 'end-of-file' && options.fallback)
+          if (eof() && options.fallback)
             errorToken = options.fallback;
           errorToken.messages.push(options.message);
           errorToken.tags.push("fatal");
@@ -200,7 +188,7 @@ var Logo = {
       function processStatement() {
         var statement = null;
         
-        if (token.name == 'end-of-file')
+        if (eof())
           return statement;
         
         if (token.name == 'word') {
@@ -236,20 +224,36 @@ var Logo = {
         return statement;
       }
 
-      function processStatementList() {
-        var statements = [];
-        while (i < tokens.length) {
+      function processStatementList(options) {
+        var until = options.until;
+        var statements = options.statements;
+        var name = options.name;
+        var start = options.start;
+
+        if (!until)
+          until = {name: 'end-of-file', value: null};
+
+        while (!(token.name == until.name &&
+                 token.value == until.value) &&
+               !eof()) {
           var statement = processStatement();
           if (!statement)
-            return statements;
+            return;
           statements.push(statement);
           advance();
         }
-        return statements;
+        if (eof() && until.name != 'end-of-file')
+          error({type: "end-not-found",
+                 fallback: start,
+                 message: "I couldn't find the end of this " +
+                          name + "."});
       }
 
-      var program = processStatementList();
-      while (i < tokens.length) {
+      var program = [];
+
+      processStatementList({statements: program});
+
+      while (!eof()) {
         token.tags.push("unparsed");
         advance();
       }
