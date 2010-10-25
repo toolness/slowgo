@@ -53,7 +53,7 @@ var Logo = {
             start: stateStartI,
             end: i,
             messages: [],
-            query: null
+            tags: []
           });
         state = name;
         stateStartI = i;
@@ -80,7 +80,7 @@ var Logo = {
       newTokens.push({
         name: 'end-of-file',
         value: null,
-        query: $()
+        tags: []
       });
 
       return newTokens;
@@ -104,16 +104,16 @@ var Logo = {
             args: [],
             statements: []
           };
-          token.query.addClass("definition");
+          token.tags.push("definition");
           advance();
           if (token.name == "word") {
-            token.query.addClass("defined-word");
+            token.tags.push("defined-word");
             defn.word = token;
             // TODO: Ensure there's no namespace conflicts.
             advance();
             while (token.name == "word" &&
                    token.value[0] == ":") {
-              token.query.addClass("argument-name");
+              token.tags.push("argument-name");
               defn.args.push(token);
               advance();
             }
@@ -152,7 +152,8 @@ var Logo = {
           if (token.name == 'end-of-file' && options.fallback)
             errorToken = options.fallback;
           errorToken.messages.push(options.message);
-          errorToken.query.addClass("fatal " + options.type);
+          errorToken.tags.push("fatal");
+          errorToken.tags.push(options.type);
         }
       }
 
@@ -172,13 +173,13 @@ var Logo = {
               start: token,
               args: []
             };
-            token.query.addClass("function-call");
+            token.tags.push("function-call");
             vocabulary[token.value].args.forEach(function(arg) {
               if (errorsFound)
                 return;
               advance();
               if (token.name == "word") {
-                token.query.addClass("argument");
+                token.tags.push("argument");
                 statement.args.push(token);
               } else
                 error({type: "unexpected-token",
@@ -209,7 +210,7 @@ var Logo = {
 
       var program = processStatementList();
       while (i < tokens.length) {
-        token.query.addClass("unparsed");
+        token.tags.push("unparsed");
         advance();
       }
       return {
@@ -248,6 +249,8 @@ $(window).ready(function() {
       });
       var program = Logo.parse(tokens);
       tokens.forEach(function(token) {
+        if (token.tags.length)
+          token.query.addClass(token.tags.join(" "));
         if (token.messages.length) {
           var message = token.messages.join(" ");
           token.query.attr("title", message);
