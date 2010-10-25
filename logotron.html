@@ -93,7 +93,43 @@ var Logo = {
           args: [":amount"]
         }
       };
-      var keywords = {};
+      var keywords = {
+        to: function() {
+          var defn = {
+            type: 'definition',
+            start: token,
+            word: null,
+            args: [],
+            statements: []
+          };
+          token.query.addClass("definition");
+          advance();
+          if (token.name == "word") {
+            token.query.addClass("defined-word");
+            defn.word = token;
+            // TODO: Ensure there's no namespace conflicts.
+            advance();
+            while (token.name == "word" &&
+                   token.value[0] == ":") {
+              token.query.addClass("argument-name");
+              defn.args.push(token);
+              advance();
+            }
+            while (!(token.name == "word" && token.value == "end") &&
+                   !(token.name == "end-of-file")) {
+              var statement = processStatement();
+              if (!statement)
+                break;
+              defn.statements.push(statement);
+              advance();
+            }
+            if (!(token.name == "word" && token.value == "end"))
+              defn.start.addClass("broken");
+          } else
+            token.query.addClass("unexpected-token");
+          return defn;
+        }
+      };
       var i = 0;
       var token = tokens[i];
 
@@ -109,7 +145,7 @@ var Logo = {
         
         if (token.name == 'word') {
           if (token.value in keywords) {
-            statement = keywords[token.value].process();
+            statement = keywords[token.value]();
           } else if (token.value in vocabulary) {
             statement = {
               name: token.value,
@@ -215,6 +251,14 @@ $(window).ready(function() {
 
 .token.unknown-name, .token.unexpected-token {
   color: red;
+}
+
+.token.defined-word {
+  font-weight: bold;
+}
+
+.token.argument-name {
+  font-style: italic;
 }
 
 .code {
