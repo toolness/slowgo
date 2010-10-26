@@ -25,16 +25,22 @@ test("Simple Logo.tokenize() tests", function() {
 });
 
 test("Simple Logo.parse() tests", function() {
-  var tokens = Logo.tokenize("repeat 4 [fd 90]");
+  var tokens = Logo.tokenize("to foo :a repeat :a [fd 90] end");
   var program = Logo.parse(tokens);
 
   equals(program.errorsFound, false);
   equals(program.statements.length, 1);
   
-  var repeat = program.statements[0];
+  var fooDefn = program.statements[0];
+  equals(fooDefn.type, 'definition');
+  equals(fooDefn.args.length, 1);
+  equals(fooDefn.args[0].value, ':a');
+  equals(fooDefn.statements.length, 1);
+
+  var repeat = fooDefn.statements[0];
   
   equals(repeat.type, 'repeat');
-  equals(repeat.times.value, '4');
+  equals(repeat.times.value, ':a');
   equals(repeat.statements.length, 1);
 
   var fd = repeat.statements[0];
