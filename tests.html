@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<meta name="author" content="Atul Varma">
+<title>Logo Tests</title>
+<link rel="stylesheet" href="qunit.css">
+<script src="qunit.js"></script>
+<script src="logo.js"></script>
+<script>
+test("Simple Logo.tokenize() tests", function() {
+  var tokens = Logo.tokenize("fd 90[");
+
+  equals(tokens[0].name, "word");
+  equals(tokens[0].value, "fd");
+  
+  equals(tokens[1].name, "whitespace");
+  equals(tokens[1].value, " ");
+
+  equals(tokens[2].name, "word");
+  equals(tokens[2].value, "90");
+
+  equals(tokens[3].name, "characterSymbol");
+  equals(tokens[3].value, "[");
+  
+  equals(tokens.length, 4);
+});
+
+test("Simple Logo.parse() tests", function() {
+  var tokens = Logo.tokenize("repeat 4 [fd 90]");
+  var program = Logo.parse(tokens);
+
+  equals(program.errorsFound, false);
+  equals(program.statements.length, 1);
+  
+  var repeat = program.statements[0];
+  
+  equals(repeat.type, 'repeat');
+  equals(repeat.times.value, '4');
+  equals(repeat.statements.length, 1);
+
+  var fd = repeat.statements[0];
+
+  equals(fd.type, 'call');
+  equals(fd.args.length, 1);
+  equals(fd.args[0].value, '90');
+});
+</script>
+<h1 id="qunit-header">Logo Tests</h1>
+<h2 id="qunit-banner"></h2>
+<h2 id="qunit-userAgent"></h2>
+<ol id="qunit-tests"></ol>
+<div id="qunit-fixture"></div>

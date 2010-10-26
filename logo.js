@@ -91,6 +91,7 @@ var Logo = {
       var keywords = {
         repeat: function() {
           var repeat = {
+            type: 'repeat',
             times: null,
             start: token,
             statements: []
