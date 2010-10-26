@@ -73,7 +73,8 @@ var Logo = {
       newTokens.push({
         name: 'end-of-file',
         value: null,
-        tags: []
+        tags: [],
+        messages: []
       });
 
       return newTokens;
