@@ -140,21 +140,21 @@ function clearDrawing() {
   ctx.fillRect(0, 0, drawing.width, drawing.height);
 }
 
-function positionDrawing() {
-  var drawing = document.getElementById("drawing");
+function makeDrawing() {
   var size = $("#rendered-code").outerWidth();
+  var drawing = document.createElement("canvas");
+  $(drawing).attr("id", "drawing");
+  $(drawing).attr("width", size).attr("height", size);
+  $("#drawing-holder").append(drawing);
+
   var offset = $(drawing).position().left;
-  $(drawing).css({
-    width: size,
-    height: size,
-    left: size + offset * 2
-  });
+  $(drawing).css({left: size + offset * 2});
 }
 
 $(window).ready(function() {
   var lastCodeValue;
 
-  positionDrawing();
+  makeDrawing();
 
   $(window).keydown(function(event) {
     var G_KEY = 71;
@@ -258,6 +258,6 @@ body {
 }
 </style>
 <h1>Logotron!</h1>
-<canvas id="drawing" width="250" height="250"></canvas>
+<div id="drawing-holder"></div>
 <form><textarea id="raw-code" class="code"></textarea></form>
 <div id="rendered-code" class="code"></div>
