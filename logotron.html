@@ -42,25 +42,36 @@ function runCode(program) {
     return number;
   }
 
+  ctx.save();
+  ctx.translate(drawing.width / 2, drawing.height / 2);
+  ctx.strokeStyle = "black";
+  ctx.beginPath();
+  ctx.moveTo(0, 0);
+
   program.statements.forEach(function(stmt) {
     if (stmt.type == "call") {
       if (stmt.name == "fd") {
         var amount = calcIntAmount(stmt.args[0].value);
-        // TODO: move forward.
+        ctx.translate(0, -amount);
+        ctx.lineTo(0, 0);
+        ctx.stroke();
       } else if (stmt.name == "rt") {
         var degrees = calcIntAmount(stmt.args[0].value);
-        // TODO: Rotate right.
+        var radians = degrees / 180 * Math.PI;
+        ctx.rotate(radians);
       } else
         throw new Error("TODO unimplemented function: " + stmt.name);
     } else
       throw new Error("TODO unimplemented statement type: " + stmt.type);
   });
+  
+  ctx.restore();
 }
 
 function clearDrawing() {
   var drawing = document.getElementById("drawing");
   var ctx = drawing.getContext("2d");
-  ctx.fillStyle = "white";
+  ctx.fillStyle = "#f0f0f0";
   ctx.fillRect(0, 0, drawing.width, drawing.height);
 }
 
@@ -79,6 +90,7 @@ $(window).ready(function() {
   var lastCodeValue;
 
   positionDrawing();
+  clearDrawing();
 
   $(window).keydown(function(event) {
     var G_KEY = 71;
@@ -175,6 +187,6 @@ body {
 }
 </style>
 <h1>Logotron!</h1>
-<canvas id="drawing"></canvas>
+<canvas id="drawing" width="250" height="250"></canvas>
 <form><textarea id="raw-code" class="code"></textarea></form>
 <div id="rendered-code" class="code"></div>
