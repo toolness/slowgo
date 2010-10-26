@@ -31,6 +31,14 @@ function parseAndRenderCode(code) {
   return program;
 }
 
+function LogoRuntimeError(message, token) {
+  this.name = LogoRuntimeError.name;
+  this.message = message;
+  this.token = token;
+}
+
+LogoRuntimeError.prototype = Error.prototype;
+
 function runCode(program) {
   var drawing = document.getElementById("drawing");
   var ctx = drawing.getContext("2d");
@@ -45,13 +53,13 @@ function runCode(program) {
 
   var functions = {
     fd: function(args) {
-      var amount = calcIntAmount(args[0].value);
+      var amount = calcIntAmount(args[0]);
       ctx.translate(0, -amount);
       ctx.lineTo(0, 0);
       ctx.stroke();
     },
     rt: function(args) {
-      var degrees = calcIntAmount(args[0].value);
+      var degrees = calcIntAmount(args[0]);
       var radians = degrees / 180 * Math.PI;
       ctx.rotate(radians);
     }
@@ -65,7 +73,7 @@ function runCode(program) {
         throw new Error("unimplemented function: " + stmt.name);
     },
     repeat: function(stmt) {
-      var times = calcIntAmount(stmt.times.value);
+      var times = calcIntAmount(stmt.times);
       for (var i = 0; i < times; i++)
         processStatements(stmt.statements);
     },
@@ -74,7 +82,7 @@ function runCode(program) {
       functions[name] = function(args) {
         var newScope = {};
         for (var i = 0; i < args.length; i++)
-          newScope[stmt.args[i].value] = args[i].value;
+          newScope[stmt.args[i].value] = args[i];
         scopeStack.push(newScope);
         processStatements(stmt.statements);
         scopeStack.pop();
@@ -84,17 +92,17 @@ function runCode(program) {
 
   function findInScope(name) {
     var currScope = scopeStack.slice(-1)[0];
-    if (name in currScope)
-      return currScope[name];
-    throw new Error("variable not defined: " + name);
+    if (name.value in currScope)
+      return currScope[name.value];
+    throw new LogoRuntimeError("I don't know what this is.", name);
   }
 
   function calcIntAmount(word) {
-    if (word[0] == ':')
+    if (word.value[0] == ':')
       word = findInScope(word);
-    var number = parseInt(word);
+    var number = parseInt(word.value);
     if (isNaN(number))
-      throw new Error("can't calc value of word: " + word);
+      throw new LogoRuntimeError("This isn't a number.", word);
     return number;
   }
 
@@ -110,9 +118,13 @@ function runCode(program) {
   try {
     processStatements(program.statements);
   } catch (e) {
-    // TODO: Obviously we want to remove this and replace it with
-    // something nicer.
-    alert(e);
+    if (e instanceof LogoRuntimeError) {
+      console.log(e.token);
+      e.token.query.addClass("runtime-error");
+      e.token.query.attr("title", e.message);
+      e.token.query.tipsy({gravity: 'nw'});
+    } else
+      throw e;
   }
 
   ctx.restore();
@@ -222,6 +234,10 @@ body {
 
 .token.argument-name {
   font-style: italic;
+}
+
+.token.runtime-error {
+  background: pink;
 }
 
 .code {
