@@ -6,8 +6,9 @@
 <script src="jquery.tipsy.js"></script>
 <script src="logo.js"></script>
 <script>
-function renderCode(code) {
+function parseAndRenderCode(code) {
   var tokens = Logo.tokenize(code);
+
   $("#rendered-code").empty();
   tokens.forEach(function(token) {
     var span = $('<span class="token"></span>');
@@ -26,31 +27,107 @@ function renderCode(code) {
       token.query.tipsy({gravity: 'nw'});
     }
   });
+
+  return program;
+}
+
+function runCode(program) {
+  var drawing = document.getElementById("drawing");
+  var ctx = drawing.getContext("2d");
+
+  function calcIntAmount(word) {
+    var number = parseInt(word);
+    if (isNaN(number))
+      throw new Error("TODO can't calc value of word: " + word);
+    return number;
+  }
+
+  program.statements.forEach(function(stmt) {
+    if (stmt.type == "call") {
+      if (stmt.name == "fd") {
+        var amount = calcIntAmount(stmt.args[0].value);
+        // TODO: move forward.
+      } else if (stmt.name == "rt") {
+        var degrees = calcIntAmount(stmt.args[0].value);
+        // TODO: Rotate right.
+      } else
+        throw new Error("TODO unimplemented function: " + stmt.name);
+    } else
+      throw new Error("TODO unimplemented statement type: " + stmt.type);
+  });
+}
+
+function clearDrawing() {
+  var drawing = document.getElementById("drawing");
+  var ctx = drawing.getContext("2d");
+  ctx.fillStyle = "white";
+  ctx.fillRect(0, 0, drawing.width, drawing.height);
+}
+
+function positionDrawing() {
+  var drawing = document.getElementById("drawing");
+  var size = $("#rendered-code").outerWidth();
+  var offset = $(drawing).position().left;
+  $(drawing).css({
+    width: size,
+    height: size,
+    left: size + offset * 2
+  });
 }
 
 $(window).ready(function() {
   var lastCodeValue;
 
-  $("#raw-code").hide();
-  $("#rendered-code").show();
-  $("#rendered-code").click(function() {
-    $(this).hide();
-    $("#raw-code").show();
-    $("#raw-code").focus();
+  positionDrawing();
+
+  $(window).keydown(function(event) {
+    var G_KEY = 71;
+    var E_KEY = 69;
+
+    if (event.metaKey) {
+      if (event.keyCode == G_KEY) {
+        event.preventDefault();
+        renderMode();
+      } else if (event.keyCode == E_KEY) {
+        event.preventDefault();
+        editMode();
+      }
+    }
   });
   
-  $("#raw-code").blur(function() {
-    var currVal = $(this).val();
+  function editMode() {
+    $("#rendered-code").hide();
+    $("#raw-code").show();
+    $("#raw-code").focus();
+  }
+
+  function renderMode() {
+    var currVal = $("#raw-code").val();
     if (currVal != lastCodeValue) {
       lastCodeValue = currVal;
-      renderCode(lastCodeValue);
+      var program = parseAndRenderCode(lastCodeValue);
+      clearDrawing();
+      if (!program.errorsFound)
+        runCode(program);
     }
-    $(this).hide();
-    $("#rendered-code").show();
-  });
+    $("#raw-code").blur();
+    $("#raw-code").hide();
+    $("#rendered-code").show();    
+  }
+
+  $("#raw-code").hide();
+  $("#rendered-code").show();
+  $("#rendered-code").click(editMode);
+  $("#drawing").click(renderMode);
+  
+  editMode();
 });
 </script>
 <style>
+body {
+  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+}
+
 #rendered-code span {
   white-space: pre-wrap;
 }
@@ -84,7 +161,7 @@ $(window).ready(function() {
 }
 
 .code {
-  width: 40em;
+  width: 20em;
   height: 40em;
   outline: none;
   font-family: Monaco, monospace;
@@ -92,6 +169,12 @@ $(window).ready(function() {
   border: 1px dotted gray;
   padding: 1em;
 }
+
+#drawing {
+  position: fixed;
+}
 </style>
-<textarea id="raw-code" class="code"></textarea>
+<h1>Logotron!</h1>
+<canvas id="drawing"></canvas>
+<form><textarea id="raw-code" class="code"></textarea></form>
 <div id="rendered-code" class="code"></div>
