@@ -48,23 +48,51 @@ function runCode(program) {
   ctx.beginPath();
   ctx.moveTo(0, 0);
 
-  program.statements.forEach(function(stmt) {
-    if (stmt.type == "call") {
-      if (stmt.name == "fd") {
-        var amount = calcIntAmount(stmt.args[0].value);
-        ctx.translate(0, -amount);
-        ctx.lineTo(0, 0);
-        ctx.stroke();
-      } else if (stmt.name == "rt") {
-        var degrees = calcIntAmount(stmt.args[0].value);
-        var radians = degrees / 180 * Math.PI;
-        ctx.rotate(radians);
-      } else
+  var functions = {
+    fd: function(args) {
+      var amount = calcIntAmount(args[0].value);
+      ctx.translate(0, -amount);
+      ctx.lineTo(0, 0);
+      ctx.stroke();
+    },
+    rt: function(args) {
+      var degrees = calcIntAmount(args[0].value);
+      var radians = degrees / 180 * Math.PI;
+      ctx.rotate(radians);
+    }
+  };
+
+  var statementTypes = {
+    call: function(stmt) {
+      if (stmt.name in functions)
+        functions[stmt.name](stmt.args);
+      else
         throw new Error("TODO unimplemented function: " + stmt.name);
-    } else
-      throw new Error("TODO unimplemented statement type: " + stmt.type);
-  });
-  
+    },
+    repeat: function(stmt) {
+      var times = calcIntAmount(stmt.times.value);
+      for (var i = 0; i < times; i++)
+        processStatements(stmt.statements);
+    },
+    definition: function(stmt) {
+      var name = stmt.word.value;
+      functions[name] = function(args) {
+        processStatements(stmt.statements);
+      }
+    }
+  };
+
+  function processStatements(statements) {
+    statements.forEach(function(stmt) {
+      if (stmt.type in statementTypes)
+        statementTypes[stmt.type](stmt);
+      else
+        throw new Error("TODO unimplemented statement type: " + stmt.type);
+    });
+  }
+
+  processStatements(program.statements);
+
   ctx.restore();
 }
 
