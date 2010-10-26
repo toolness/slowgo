@@ -6,6 +6,28 @@
 <script src="jquery.tipsy.js"></script>
 <script src="logo.js"></script>
 <script>
+function renderCode(code) {
+  var tokens = Logo.tokenize(code);
+  $("#rendered-code").empty();
+  tokens.forEach(function(token) {
+    var span = $('<span class="token"></span>');
+    span.addClass(token.name);
+    span.text(token.value);
+    token.query = span;
+    $("#rendered-code").append(span);
+  });
+  var program = Logo.parse(tokens);
+  tokens.forEach(function(token) {
+    if (token.tags.length)
+      token.query.addClass(token.tags.join(" "));
+    if (token.messages.length) {
+      var message = token.messages.join(" ");
+      token.query.attr("title", message);
+      token.query.tipsy({gravity: 'nw'});
+    }
+  });
+}
+
 $(window).ready(function() {
   var lastCodeValue;
 
@@ -21,25 +43,7 @@ $(window).ready(function() {
     var currVal = $(this).val();
     if (currVal != lastCodeValue) {
       lastCodeValue = currVal;
-      var tokens = Logo.tokenize(lastCodeValue);
-      $("#rendered-code").empty();
-      tokens.forEach(function(token) {
-        var span = $('<span class="token"></span>');
-        span.addClass(token.name);
-        span.text(token.value);
-        token.query = span;
-        $("#rendered-code").append(span);
-      });
-      var program = Logo.parse(tokens);
-      tokens.forEach(function(token) {
-        if (token.tags.length)
-          token.query.addClass(token.tags.join(" "));
-        if (token.messages.length) {
-          var message = token.messages.join(" ");
-          token.query.attr("title", message);
-          token.query.tipsy({gravity: 'nw'});
-        }
-      });
+      renderCode(lastCodeValue);
     }
     $(this).hide();
     $("#rendered-code").show();
