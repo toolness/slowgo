@@ -119,7 +119,6 @@ function runCode(program) {
     processStatements(program.statements);
   } catch (e) {
     if (e instanceof LogoRuntimeError) {
-      console.log(e.token);
       e.token.query.addClass("runtime-error");
       e.token.query.attr("title", e.message);
       e.token.query.tipsy({gravity: 'nw'});
