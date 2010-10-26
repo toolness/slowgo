@@ -35,18 +35,13 @@ function runCode(program) {
   var drawing = document.getElementById("drawing");
   var ctx = drawing.getContext("2d");
 
-  function calcIntAmount(word) {
-    var number = parseInt(word);
-    if (isNaN(number))
-      throw new Error("TODO can't calc value of word: " + word);
-    return number;
-  }
-
   ctx.save();
   ctx.translate(drawing.width / 2, drawing.height / 2);
   ctx.strokeStyle = "black";
   ctx.beginPath();
   ctx.moveTo(0, 0);
+
+  var scopeStack = [{}];
 
   var functions = {
     fd: function(args) {
@@ -67,7 +62,7 @@ function runCode(program) {
       if (stmt.name in functions)
         functions[stmt.name](stmt.args);
       else
-        throw new Error("TODO unimplemented function: " + stmt.name);
+        throw new Error("unimplemented function: " + stmt.name);
     },
     repeat: function(stmt) {
       var times = calcIntAmount(stmt.times.value);
@@ -77,21 +72,48 @@ function runCode(program) {
     definition: function(stmt) {
       var name = stmt.word.value;
       functions[name] = function(args) {
+        var newScope = {};
+        for (var i = 0; i < args.length; i++)
+          newScope[stmt.args[i].value] = args[i].value;
+        scopeStack.push(newScope);
         processStatements(stmt.statements);
+        scopeStack.pop();
       }
     }
   };
+
+  function findInScope(name) {
+    var currScope = scopeStack.slice(-1)[0];
+    if (name in currScope)
+      return currScope[name];
+    throw new Error("variable not defined: " + name);
+  }
+
+  function calcIntAmount(word) {
+    if (word[0] == ':')
+      word = findInScope(word);
+    var number = parseInt(word);
+    if (isNaN(number))
+      throw new Error("can't calc value of word: " + word);
+    return number;
+  }
 
   function processStatements(statements) {
     statements.forEach(function(stmt) {
       if (stmt.type in statementTypes)
         statementTypes[stmt.type](stmt);
       else
-        throw new Error("TODO unimplemented statement type: " + stmt.type);
+        throw new Error("unimplemented statement type: " + stmt.type);
     });
   }
 
-  processStatements(program.statements);
+  try {
+    processStatements(program.statements);
+  } catch (e) {
+    // TODO: Obviously we want to remove this and replace it with
+    // something nicer.
+    alert(e);
+  }
 
   ctx.restore();
 }
@@ -118,7 +140,6 @@ $(window).ready(function() {
   var lastCodeValue;
 
   positionDrawing();
-  clearDrawing();
 
   $(window).keydown(function(event) {
     var G_KEY = 71;
@@ -160,7 +181,10 @@ $(window).ready(function() {
   $("#rendered-code").click(editMode);
   $("#drawing").click(renderMode);
   
-  editMode();
+  renderMode();
+  
+  if (!$("#raw-code").val())
+    editMode();
 });
 </script>
 <style>
