@@ -50,6 +50,12 @@ test("Simple Logo.parse() tests", function() {
   equals(fd.args[0].value, '90');
 });
 
+test("Recursion parsing", function() {
+  var code = "to foo :a foo :a end";
+  var program = Logo.parse(Logo.tokenize(code));
+  ok(!program.errorsFound, "program parses: " + code);
+});
+
 test("Simple Logo.parse() EOF error conditions", function() {
   ["repeat",
    "repeat 4",

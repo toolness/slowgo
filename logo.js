@@ -129,16 +129,19 @@ var Logo = {
             args: [],
             statements: []
           };
+          var vocabularyDefn = {args: []};
           token.tags.push("definition");
           advance();
           if (token.name == "word") {
             token.tags.push("defined-word");
             defn.word = token;
+            vocabulary[token.value] = vocabularyDefn;
             // TODO: Ensure there's no namespace conflicts.
             advance();
             while (token.name == "word" &&
                    token.value[0] == ":") {
               token.tags.push("argument-name");
+              vocabularyDefn.args.push(token.value);
               defn.args.push(token);
               advance();
             }
