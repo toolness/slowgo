@@ -6,6 +6,8 @@
 <script src="jquery.tipsy.js"></script>
 <script src="logo.js"></script>
 <script>
+// TODO: Store code in location.hash to enable sharing and undo.
+
 function parseAndRenderCode(code) {
   var tokens = Logo.tokenize(code);
 
@@ -122,8 +124,10 @@ function runCode(program) {
       e.token.query.addClass("runtime-error");
       e.token.query.attr("title", e.message);
       e.token.query.tipsy({gravity: 'nw'});
-    } else
+    } else {
+      ctx.restore();
       throw e;
+    }
   }
 
   ctx.restore();
