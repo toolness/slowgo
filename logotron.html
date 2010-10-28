@@ -51,7 +51,10 @@ function runCode(program) {
   ctx.beginPath();
   ctx.moveTo(0, 0);
 
+  var callbackStack = [];
+  var actionQueue = [];
   var scopeStack = [{}];
+  var isProgramFinished = false;
 
   var functions = {
     fd: function(args) {
@@ -59,11 +62,13 @@ function runCode(program) {
       ctx.translate(0, -amount);
       ctx.lineTo(0, 0);
       ctx.stroke();
+      done();
     },
     rt: function(args) {
       var degrees = calcIntAmount(args[0]);
       var radians = degrees / 180 * Math.PI;
       ctx.rotate(radians);
+      done();
     }
   };
 
@@ -76,8 +81,17 @@ function runCode(program) {
     },
     repeat: function(stmt) {
       var times = calcIntAmount(stmt.times);
-      for (var i = 0; i < times; i++)
-        processStatements(stmt.statements);
+      var i = 0;
+      
+      function repeatStatements() {
+        if (i < times) {
+          schedule(processStatements, stmt.statements, repeatStatements);
+          i++;
+        } else
+          done();
+      }
+      
+      repeatStatements();
     },
     definition: function(stmt) {
       var name = stmt.word.value;
@@ -86,9 +100,12 @@ function runCode(program) {
         for (var i = 0; i < args.length; i++)
           newScope[stmt.args[i].value] = args[i];
         scopeStack.push(newScope);
-        processStatements(stmt.statements);
-        scopeStack.pop();
+        schedule(processStatements, stmt.statements, function() {
+          scopeStack.pop();
+          done();
+        });
       }
+      done();
     }
   };
 
@@ -109,28 +126,68 @@ function runCode(program) {
   }
 
   function processStatements(statements) {
-    statements.forEach(function(stmt) {
-      if (stmt.type in statementTypes)
-        statementTypes[stmt.type](stmt);
-      else
-        throw new Error("unimplemented statement type: " + stmt.type);
-    });
+    var i = 0;
+    
+    function execNextStatement() {
+      if (i < statements.length) {
+        var stmt = statements[i];
+        if (stmt.type in statementTypes)
+          schedule(statementTypes[stmt.type], stmt,
+                   execNextStatement);
+        else
+          throw new Error("unimplemented statement type: " + stmt.type);
+        i++;
+      } else
+        done();
+    }
+
+    execNextStatement();
   }
 
-  try {
-    processStatements(program.statements);
-  } catch (e) {
-    if (e instanceof LogoRuntimeError) {
-      e.token.query.addClass("runtime-error");
-      e.token.query.attr("title", e.message);
-      e.token.query.tipsy({gravity: 'nw'});
-    } else {
+  function schedule(action, arg, cb) {
+    callbackStack.push(cb);
+    actionQueue.push({action: action, arg: arg});
+  }
+
+  function done() {
+    var cb = callbackStack.pop();
+    cb();
+  }
+
+  function finishProgram() {
+    if (!isProgramFinished) {
+      isProgramFinished = true;
       ctx.restore();
-      throw e;
     }
   }
 
-  ctx.restore();
+  schedule(processStatements, program.statements, finishProgram);
+
+  return {
+    step: function step() {
+      try {
+        if (actionQueue.length) {
+          var info = actionQueue.shift();
+          info.action(info.arg);
+        } else
+          throw new Error("no more code to run");
+      } catch (e) {
+        finishProgram();
+        if (e instanceof LogoRuntimeError) {
+          // TODO: This seems to be triggered even if the
+          // error isn't a LogoRuntimeError, e.g. ReferenceError
+          // instances.
+          e.token.query.addClass("runtime-error");
+          e.token.query.attr("title", e.message);
+          e.token.query.tipsy({gravity: 'nw'});
+        } else
+          throw e;
+      }
+    },
+    isDone: function isDone() {
+      return (actionQueue.length == 0);
+    }
+  };
 }
 
 function clearDrawing() {
@@ -183,8 +240,11 @@ $(window).ready(function() {
       lastCodeValue = currVal;
       var program = parseAndRenderCode(lastCodeValue);
       clearDrawing();
-      if (!program.errorsFound)
-        runCode(program);
+      if (!program.errorsFound) {
+        var runtime = runCode(program);
+        while (!runtime.isDone())
+          runtime.step();
+      }
     }
     $("#raw-code").blur();
     $("#raw-code").hide();
