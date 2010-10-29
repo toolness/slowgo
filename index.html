@@ -6,7 +6,12 @@
 <script src="js/jquery.tipsy.js"></script>
 <script src="js/logo.js"></script>
 <script>
-// TODO: Store code in location.hash to enable sharing and undo.
+if (!window.console)
+  window.console = {
+    log: function() {},
+    warn: function() {},
+    error: function() {}
+  };
 
 function parseAndRenderCode(code) {
   var tokens = Logo.tokenize(code);
@@ -76,7 +81,8 @@ function runCode(program) {
         e.token.query.attr("title", e.message);
         e.token.query.tipsy({gravity: 'nw'});
       } else {
-        console.log(e.stack);
+        if (e.stack)
+          console.log(e.stack);
         throw e;
       }
     }
@@ -100,6 +106,47 @@ function makeDrawing() {
   var offset = $(drawing).position().left;
   $(drawing).css({left: size + offset * 2});
 }
+
+var DEFAULT_HASH_INFO = {
+  code: ""
+};
+
+function makeHash(info) {
+  var pairs = [];
+
+  for (var name in info)
+    pairs.push(name + "=" + encodeURIComponent(info[name]));
+  
+  return "#" + pairs.join("&");
+}
+
+function parseHash(hash) {
+  var result = {};
+  
+  for (var key in DEFAULT_HASH_INFO)
+    result[key] = DEFAULT_HASH_INFO[key];
+
+  if (hash.length > 1) {
+    hash = hash.slice(1);
+    hash.split("&").forEach(function(pair) {
+      var keyval = pair.split("=");
+      if (keyval.length == 2) {
+        var key = decodeURIComponent(keyval[0]);
+        var value = decodeURIComponent(keyval[1]);
+        if (key in result)
+          result[key] = value;
+      } else
+        console.warn("malformed key-value pair:", pair);
+    });
+  }
+  return result;
+}
+
+var HASH_SYNONYMS = {
+  "#": ""
+};
+
+HASH_SYNONYMS[makeHash(DEFAULT_HASH_INFO)] = "";
 
 $(window).ready(function() {
   var lastCodeValue;
@@ -131,6 +178,7 @@ $(window).ready(function() {
     var currVal = $("#raw-code").val();
     if (currVal != lastCodeValue) {
       lastCodeValue = currVal;
+      setHash({code: lastCodeValue});
       var program = parseAndRenderCode(lastCodeValue);
       clearDrawing();
       if (!program.errorsFound) {
@@ -149,10 +197,34 @@ $(window).ready(function() {
   $("#rendered-code").click(editMode);
   $("#drawing").click(renderMode);
   
-  renderMode();
+  var lastHash = "";
+
+  function onHashChange() {
+    var hash = window.location.hash;
+    if (hash in HASH_SYNONYMS)
+      hash = HASH_SYNONYMS[hash];
+    if (hash != lastHash) {
+      lastHash = hash;
+      var info = parseHash(lastHash);
+      $("#raw-code").val(info.code);
+      renderMode();
+      return true;
+    } else
+      return false;
+  }
+
+  function setHash(info) {
+    var hash = makeHash(info);
+    if (hash in HASH_SYNONYMS)
+      hash = HASH_SYNONYMS[hash];
+    if (hash != lastHash)
+      window.location.hash = hash;
+  }
+
+  window.addEventListener("hashchange", onHashChange, false);
   
-  if (!$("#raw-code").val())
-    editMode();
+  if (!onHashChange())
+    renderMode();
 });
 </script>
 <style>
