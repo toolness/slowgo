@@ -1,4 +1,4 @@
-This is an incredibly slow Logo interpreter.
+Slowgo is an incredibly slow Logo interpreter.
 
 The core tokenizer and parser have no dependencies.
 
