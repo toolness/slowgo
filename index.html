@@ -54,7 +54,7 @@ function runCode(program) {
   var callbackStack = [];
   var actionQueue = [];
   var scopeStack = [{}];
-  var isProgramFinished = false;
+  var isProgramFinalized = false;
 
   var functions = {
     fd: function(args) {
@@ -154,14 +154,14 @@ function runCode(program) {
     cb();
   }
 
-  function finishProgram() {
-    if (!isProgramFinished) {
-      isProgramFinished = true;
+  function finalizeProgram() {
+    if (!isProgramFinalized) {
+      isProgramFinalized = true;
       ctx.restore();
     }
   }
 
-  schedule(processStatements, program.statements, finishProgram);
+  schedule(processStatements, program.statements, finalizeProgram);
 
   return {
     step: function step() {
@@ -172,7 +172,7 @@ function runCode(program) {
         } else
           throw new Error("no more code to run");
       } catch (e) {
-        finishProgram();
+        finalizeProgram();
         if (e instanceof LogoRuntimeError) {
           // TODO: This seems to be triggered even if the
           // error isn't a LogoRuntimeError, e.g. ReferenceError
