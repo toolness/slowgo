@@ -51,8 +51,8 @@ function runCode(program) {
   ctx.beginPath();
   ctx.moveTo(0, 0);
 
-  var callbackStack = [];
-  var actionQueue = [];
+  var nextAction = null;
+  var actionStack = [];
   var scopeStack = [{}];
   var isProgramFinalized = false;
 
@@ -145,13 +145,18 @@ function runCode(program) {
   }
 
   function schedule(action, arg, cb) {
-    callbackStack.push(cb);
-    actionQueue.push({action: action, arg: arg});
+    if (nextAction)
+      throw new Error("another action is already queued");
+    nextAction = {
+      action: action,
+      arg: arg,
+      onDone: cb
+    };
   }
 
   function done() {
-    var cb = callbackStack.pop();
-    cb();
+    var currAction = actionStack.pop();
+    currAction.onDone();
   }
 
   function finalizeProgram() {
@@ -166,8 +171,10 @@ function runCode(program) {
   return {
     step: function step() {
       try {
-        if (actionQueue.length) {
-          var info = actionQueue.shift();
+        if (nextAction) {
+          var info = nextAction;
+          actionStack.push(info);
+          nextAction = null;
           info.action(info.arg);
         } else
           throw new Error("no more code to run");
@@ -185,7 +192,7 @@ function runCode(program) {
       }
     },
     isDone: function isDone() {
-      return (actionQueue.length == 0);
+      return (nextAction === null);
     }
   };
 }
