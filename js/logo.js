@@ -1,6 +1,14 @@
 var Logo = {
   WHITESPACE: /[ \r\n\t]/,
   LITERALS: /[ \[\]]/,
+  VOCABULARY: {
+    fd: {
+      args: [":amount"]
+    },
+    rt: {
+      args: [":amount"]
+    }
+  },
   tokenize: function Logo_tokenize(str) {
     var tokens = [];
     var state = 'whitespace';
@@ -81,15 +89,11 @@ var Logo = {
     }
 
     function parse(tokens) {
-      var vocabulary = {
-        // TODO: These should be passed-in.
-        fd: {
-          args: [":amount"]
-        },
-        rt: {
-          args: [":amount"]
-        }
-      };
+      var vocabulary = {};
+
+      for (name in Logo.VOCABULARY)
+        vocabulary[name] = Logo.VOCABULARY[name];
+
       var keywords = {
         repeat: function() {
           var repeat = {
