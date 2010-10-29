@@ -82,6 +82,7 @@ var Logo = {
 
     function parse(tokens) {
       var vocabulary = {
+        // TODO: These should be passed-in.
         fd: {
           args: [":amount"]
         },
@@ -264,5 +265,148 @@ var Logo = {
     }
 
     return parse(stripWhitespaceAndComments(tokens));
+  },
+  execute: function Logo_execute(options) {
+    var program = options.program;
+    var errorHandler = options.error || function(e) { throw e };
+    var successHandler = options.success || function() {};
+    var nativeFunctions = options.functions;
+
+    var nextAction = null;
+    var actionStack = [];
+    var scopeStack = [{}];
+    var functions = {};
+
+    for (var name in nativeFunctions)
+      functions[name] = nativeFunctions[name];
+
+    var statementTypes = {
+      call: function(stmt) {
+        if (stmt.name in functions) {
+          var fn = functions[stmt.name];
+          var options = {
+            args: stmt.args,
+            api: {
+              calcIntAmount: calcIntAmount
+            },
+            success: done,
+            error: function(e) {
+              nextAction = null;
+              errorHandler(e);
+            }
+          };
+          fn(options);
+        } else
+          throw new Error("unimplemented function: " + stmt.name);
+      },
+      repeat: function(stmt) {
+        var times = calcIntAmount(stmt.times);
+        var i = 0;
+
+        function repeatStatements() {
+          if (i < times) {
+            schedule(processStatements, stmt.statements, repeatStatements);
+            i++;
+          } else
+            done();
+        }
+
+        repeatStatements();
+      },
+      definition: function(stmt) {
+        var name = stmt.word.value;
+        functions[name] = function(options) {
+          var args = options.args;
+          var newScope = {};
+          for (var i = 0; i < args.length; i++)
+            newScope[stmt.args[i].value] = args[i];
+          scopeStack.push(newScope);
+          schedule(processStatements, stmt.statements, function() {
+            scopeStack.pop();
+            options.success();
+          });
+        }
+        done();
+      }
+    };
+
+    function findInScope(name) {
+      var currScope = scopeStack.slice(-1)[0];
+      if (name.value in currScope)
+        return currScope[name.value];
+      throw new Logo.RuntimeError("I don't know what this is.", name);
+    }
+
+    function calcIntAmount(word) {
+      if (word.value[0] == ':')
+        word = findInScope(word);
+      var number = parseInt(word.value);
+      if (isNaN(number))
+        throw new Logo.RuntimeError("This isn't a number.", word);
+      return number;
+    }
+
+    function processStatements(statements) {
+      var i = 0;
+
+      function execNextStatement() {
+        if (i < statements.length) {
+          var stmt = statements[i];
+          if (stmt.type in statementTypes)
+            schedule(statementTypes[stmt.type], stmt,
+                     execNextStatement);
+          else
+            throw new Error("unimplemented statement type: " + stmt.type);
+          i++;
+        } else
+          done();
+      }
+
+      execNextStatement();
+    }
+
+    function schedule(action, arg, cb) {
+      if (nextAction)
+        throw new Error("another action is already queued");
+      nextAction = {
+        action: action,
+        arg: arg,
+        onDone: cb
+      };
+    }
+
+    function done() {
+      var currAction = actionStack.pop();
+      currAction.onDone();
+    }
+
+    schedule(processStatements, program.statements, successHandler);
+
+    return {
+      step: function step() {
+        try {
+          if (nextAction) {
+            var info = nextAction;
+            actionStack.push(info);
+            nextAction = null;
+            info.action(info.arg);
+          } else
+            throw new Error("no more code to run");
+        } catch (e) {
+          nextAction = null;
+          errorHandler(e);
+        }
+      },
+      isDone: function isDone() {
+        return (nextAction === null);
+      }
+    };
+  },
+  RuntimeError: function Logo_RuntimeError(message, token) {
+    this.name = "Logo.RuntimeError";
+    this.message = message;
+    this.token = token;
   }
 };
+
+Logo.RuntimeError.prototype = Error.prototype;

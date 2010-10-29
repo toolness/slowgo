@@ -4,6 +4,7 @@
 <title>Slowgo Tests</title>
 <link rel="stylesheet" href="css/qunit.css">
 <script src="js/qunit.js"></script>
+<script src="js/jquery.min.js"></script>
 <script src="js/logo.js"></script>
 <script>
 test("Simple Logo.tokenize() tests", function() {
@@ -68,9 +69,88 @@ test("Simple Logo.parse() EOF error conditions", function() {
     ok(program.errorsFound, "ensure code doesn't parse: " + code);
   });
 });
+
+test("Simple Logo.execute() tests", function() {
+  $("#qunit-fixture .execute-tests > div").each(function() {
+    var code = $(this).find(".code").text();
+    var expected = $(this).find(".expected").text();
+    var program = Logo.parse(Logo.tokenize(code));
+    var output = [];
+    var functions = {};
+    
+    ["fd", "rt"].forEach(function(name) {
+      functions[name] = function(options) {
+        output.push(name + " " +
+                    options.api.calcIntAmount(options.args[0]));
+        options.success();
+      };
+    });
+
+    var runtime = Logo.execute({
+      program: program,
+      functions: functions,
+      error: function(e) {
+        if ('token' in e) {
+          output.push(e + " @ '" + e.token.value + "'");
+        } else
+          throw e;
+      }
+    });
+    while (!runtime.isDone())
+      runtime.step();
+    equals(output.join(", "), expected, $(this).attr("name"));
+  });
+});
 </script>
 <h1 id="qunit-header">Slowgo Tests</h1>
 <h2 id="qunit-banner"></h2>
 <h2 id="qunit-userAgent"></h2>
 <ol id="qunit-tests"></ol>
-<div id="qunit-fixture"></div>
+<div id="qunit-fixture">
+  <div class="execute-tests">
+    <div name="a single instruction">
+      <div class="code">fd 90</div>
+      <div class="expected">fd 90</div>
+    </div>
+    <div name="a single repeat statement">
+      <div class="code">repeat 2 [fd 90]</div>
+      <div class="expected">fd 90, fd 90</div>
+    </div>
+    <div name="a runtime type error, non-number">
+      <div class="code">rt 90 fd blarg</div>
+      <div class="expected">rt 90, Logo.RuntimeError: This isn't a number. @ 'blarg'</div>
+    </div>
+    <div name="a runtime type error, undefined variable">
+      <div class="code">rt 90 fd :u</div>
+      <div class="expected">rt 90, Logo.RuntimeError: I don't know what this is. @ ':u'</div>
+    </div>
+    <div name="a single function call">
+      <div class="code">
+        to boop :u
+          fd :u
+        end
+        
+        boop 4
+        boop 5
+      </div>
+      <div class="expected">fd 4, fd 5</div>
+    </div>
+    <div name="nested function calls">
+      <div class="code">
+        to flarg :u
+          rt :u
+        end
+        
+        to boop :u
+          fd :u
+          flarg 9
+          rt :u
+        end
+        
+        boop 4
+        boop 5
+      </div>
+      <div class="expected">fd 4, rt 9, rt 4, fd 5, rt 9, rt 5</div>
+    </div>
+  </div>
+</div>

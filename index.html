@@ -33,131 +33,16 @@ function parseAndRenderCode(code) {
   return program;
 }
 
-function LogoRuntimeError(message, token) {
-  this.name = LogoRuntimeError.name;
-  this.message = message;
-  this.token = token;
-}
-
-LogoRuntimeError.prototype = Error.prototype;
-
 function runCode(program) {
   var drawing = document.getElementById("drawing");
   var ctx = drawing.getContext("2d");
+  var isProgramFinalized = false;
 
   ctx.save();
   ctx.translate(drawing.width / 2, drawing.height / 2);
   ctx.strokeStyle = "black";
   ctx.beginPath();
   ctx.moveTo(0, 0);
-
-  var nextAction = null;
-  var actionStack = [];
-  var scopeStack = [{}];
-  var isProgramFinalized = false;
-
-  var functions = {
-    fd: function(args) {
-      var amount = calcIntAmount(args[0]);
-      ctx.translate(0, -amount);
-      ctx.lineTo(0, 0);
-      ctx.stroke();
-      done();
-    },
-    rt: function(args) {
-      var degrees = calcIntAmount(args[0]);
-      var radians = degrees / 180 * Math.PI;
-      ctx.rotate(radians);
-      done();
-    }
-  };
-
-  var statementTypes = {
-    call: function(stmt) {
-      if (stmt.name in functions)
-        functions[stmt.name](stmt.args);
-      else
-        throw new Error("unimplemented function: " + stmt.name);
-    },
-    repeat: function(stmt) {
-      var times = calcIntAmount(stmt.times);
-      var i = 0;
-      
-      function repeatStatements() {
-        if (i < times) {
-          schedule(processStatements, stmt.statements, repeatStatements);
-          i++;
-        } else
-          done();
-      }
-      
-      repeatStatements();
-    },
-    definition: function(stmt) {
-      var name = stmt.word.value;
-      functions[name] = function(args) {
-        var newScope = {};
-        for (var i = 0; i < args.length; i++)
-          newScope[stmt.args[i].value] = args[i];
-        scopeStack.push(newScope);
-        schedule(processStatements, stmt.statements, function() {
-          scopeStack.pop();
-          done();
-        });
-      }
-      done();
-    }
-  };
-
-  function findInScope(name) {
-    var currScope = scopeStack.slice(-1)[0];
-    if (name.value in currScope)
-      return currScope[name.value];
-    throw new LogoRuntimeError("I don't know what this is.", name);
-  }
-
-  function calcIntAmount(word) {
-    if (word.value[0] == ':')
-      word = findInScope(word);
-    var number = parseInt(word.value);
-    if (isNaN(number))
-      throw new LogoRuntimeError("This isn't a number.", word);
-    return number;
-  }
-
-  function processStatements(statements) {
-    var i = 0;
-    
-    function execNextStatement() {
-      if (i < statements.length) {
-        var stmt = statements[i];
-        if (stmt.type in statementTypes)
-          schedule(statementTypes[stmt.type], stmt,
-                   execNextStatement);
-        else
-          throw new Error("unimplemented statement type: " + stmt.type);
-        i++;
-      } else
-        done();
-    }
-
-    execNextStatement();
-  }
-
-  function schedule(action, arg, cb) {
-    if (nextAction)
-      throw new Error("another action is already queued");
-    nextAction = {
-      action: action,
-      arg: arg,
-      onDone: cb
-    };
-  }
-
-  function done() {
-    var currAction = actionStack.pop();
-    currAction.onDone();
-  }
 
   function finalizeProgram() {
     if (!isProgramFinalized) {
@@ -166,35 +51,36 @@ function runCode(program) {
     }
   }
 
-  schedule(processStatements, program.statements, finalizeProgram);
-
-  return {
-    step: function step() {
-      try {
-        if (nextAction) {
-          var info = nextAction;
-          actionStack.push(info);
-          nextAction = null;
-          info.action(info.arg);
-        } else
-          throw new Error("no more code to run");
-      } catch (e) {
-        finalizeProgram();
-        if (e instanceof LogoRuntimeError) {
-          // TODO: This seems to be triggered even if the
-          // error isn't a LogoRuntimeError, e.g. ReferenceError
-          // instances.
-          e.token.query.addClass("runtime-error");
-          e.token.query.attr("title", e.message);
-          e.token.query.tipsy({gravity: 'nw'});
-        } else
-          throw e;
+  return Logo.execute({
+    program: program,
+    functions: {
+      fd: function(options) {
+        var amount = options.api.calcIntAmount(options.args[0]);
+        ctx.translate(0, -amount);
+        ctx.lineTo(0, 0);
+        ctx.stroke();
+        options.success();
+      },
+      rt: function(options) {
+        var degrees = options.api.calcIntAmount(options.args[0]);
+        var radians = degrees / 180 * Math.PI;
+        ctx.rotate(radians);
+        options.success();
       }
     },
-    isDone: function isDone() {
-      return (nextAction === null);
+    success: finalizeProgram,
+    error: function(e) {
+      finalizeProgram();
+      if ('token' in e) {
+        e.token.query.addClass("runtime-error");
+        e.token.query.attr("title", e.message);
+        e.token.query.tipsy({gravity: 'nw'});
+      } else {
+        console.log(e.stack);
+        throw e;
+      }
     }
-  };
+  });
 }
 
 function clearDrawing() {

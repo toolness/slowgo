@@ -1,8 +1,8 @@
 Slowgo is an incredibly slow Logo interpreter.
 
-The core tokenizer and parser have no dependencies.
+The core tokenizer, parser, and interpreter have no dependencies.
 
-The interpreter and development environment use:
+The graphical interpreter and development environment use:
 
   * [JQuery](http://jquery.com)
   * [Tipsy](onehackoranother.com/projects/jquery/tipsy/)
