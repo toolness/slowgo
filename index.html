@@ -39,54 +39,40 @@ function parseAndRenderCode(code) {
 }
 
 function runCode(program) {
-  var drawing = document.getElementById("drawing");
-  var ctx = drawing.getContext("2d");
-  var isProgramFinalized = false;
+  var ops = [];
 
-  ctx.save();
-  ctx.translate(drawing.width / 2, drawing.height / 2);
-  ctx.strokeStyle = "black";
-  ctx.beginPath();
-  ctx.moveTo(0, 0);
-
-  function finalizeProgram() {
-    if (!isProgramFinalized) {
-      isProgramFinalized = true;
-      ctx.restore();
-    }
-  }
-
-  return Logo.execute({
-    program: program,
-    functions: {
-      fd: function(options) {
-        var amount = options.api.calcIntAmount(options.args[0]);
-        ctx.translate(0, -amount);
-        ctx.lineTo(0, 0);
-        ctx.stroke();
-        options.success();
+  return {
+    runtime: Logo.execute({
+      program: program,
+      functions: {
+        fd: function(options) {
+          var amount = options.api.calcIntAmount(options.args[0]);
+          ops.push(["translate", [0, -amount]]);
+          ops.push(["lineTo", [0, 0]]);
+          ops.push(["stroke", []]);
+          options.success();
+        },
+        rt: function(options) {
+          var degrees = options.api.calcIntAmount(options.args[0]);
+          var radians = degrees / 180 * Math.PI;
+          ops.push(["rotate", [radians]]);
+          options.success();
+        }
       },
-      rt: function(options) {
-        var degrees = options.api.calcIntAmount(options.args[0]);
-        var radians = degrees / 180 * Math.PI;
-        ctx.rotate(radians);
-        options.success();
+      error: function(e) {
+        if ('token' in e) {
+          e.token.query.addClass("runtime-error");
+          e.token.query.attr("title", e.message);
+          e.token.query.tipsy({gravity: 'nw'});
+        } else {
+          if (e.stack)
+            console.log(e.stack);
+          throw e;
+        }
       }
-    },
-    success: finalizeProgram,
-    error: function(e) {
-      finalizeProgram();
-      if ('token' in e) {
-        e.token.query.addClass("runtime-error");
-        e.token.query.attr("title", e.message);
-        e.token.query.tipsy({gravity: 'nw'});
-      } else {
-        if (e.stack)
-          console.log(e.stack);
-        throw e;
-      }
-    }
-  });
+    }),
+    ops: ops
+  };
 }
 
 function clearDrawing() {
@@ -105,6 +91,30 @@ function makeDrawing() {
 
   var offset = $(drawing).position().left;
   $(drawing).css({left: size + offset * 2});
+}
+
+function renderDrawing(ops) {
+  var drawing = document.getElementById("drawing");
+  var ctx = drawing.getContext("2d");
+
+  ctx.save();
+  ctx.translate(drawing.width / 2, drawing.height / 2);
+  ctx.strokeStyle = "black";
+  ctx.beginPath();
+  ctx.moveTo(0, 0);
+
+  ops.forEach(function(op) {
+    ctx[op[0]].apply(ctx, op[1]);
+  });
+
+  // Draw the turtle pointer.
+  ctx.lineTo(-5, 0);
+  ctx.lineTo(0, -10);
+  ctx.lineTo(5, 0);
+  ctx.lineTo(0, 0);
+  ctx.stroke();
+  
+  ctx.restore();
 }
 
 var DEFAULT_HASH_INFO = {
@@ -182,9 +192,10 @@ $(window).ready(function() {
       var program = parseAndRenderCode(lastCodeValue);
       clearDrawing();
       if (!program.errorsFound) {
-        var runtime = runCode(program);
-        while (!runtime.isDone())
-          runtime.step();
+        var vm = runCode(program);
+        while (!vm.runtime.isDone())
+          vm.runtime.step();
+        renderDrawing(vm.ops);
       }
     }
     $("#raw-code").blur();
