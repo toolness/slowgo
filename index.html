@@ -185,6 +185,7 @@ $(window).ready(function() {
   }
 
   function renderMode() {
+    var MAX_VM_STEPS = 2000;
     var currVal = $("#raw-code").val();
     if (currVal != lastCodeValue) {
       lastCodeValue = currVal;
@@ -193,7 +194,7 @@ $(window).ready(function() {
       clearDrawing();
       if (!program.errorsFound) {
         var vm = runCode(program);
-        while (!vm.runtime.isDone())
+        for (var i = 0; i < MAX_VM_STEPS && !vm.runtime.isDone(); i++)
           vm.runtime.step();
         renderDrawing(vm.ops);
       }
