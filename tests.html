@@ -69,6 +69,8 @@ test("Simple Logo.parse() EOF error conditions", function() {
    "to",
    "to foo",
    "to foo :bar",
+   "fd +",
+   "fd 2 +",
    "fd"].forEach(function(code) {
     var program = Logo.parse(Logo.tokenize(code));
     ok(program.errorsFound, "ensure code doesn't parse: " + code);
