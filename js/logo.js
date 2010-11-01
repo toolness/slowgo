@@ -1,6 +1,6 @@
 var Logo = {
   WHITESPACE: /[ \r\n\t]/,
-  LITERALS: /[ \[\]]/,
+  LITERALS: /[ \[\]+]/,
   VOCABULARY: {
     fd: {
       args: [":amount"]
@@ -167,6 +167,12 @@ var Logo = {
       var token = tokens[i];
       var errorsFound = false;
 
+      function peekNextToken() {
+        if (i+1 < tokens.length)
+          return tokens[i+1];
+        return null;
+      }
+
       function advance() {
         i++;
         if (i < tokens.length)
@@ -187,6 +193,39 @@ var Logo = {
           errorToken.tags.push("fatal");
           errorToken.tags.push(options.type);
         }
+      }
+
+      function processExpression(fallback) {
+        var expression = {
+          type: 'expression'
+        };
+
+        // Get the first token and make sure it's a word.
+        if (token.name == "word") {
+          var nextToken = peekNextToken();
+          if (nextToken &&
+              nextToken.name == "characterSymbol" &&
+              nextToken.value == "+") {
+            expression.subtype = "binaryOperation";
+            expression.leftOperand = {
+              type: 'expression',
+              subtype: 'atom',
+              token: token
+            };
+            advance();
+            expression.operator = token;
+            advance();
+            expression.rightOperand = processExpression(fallback);
+          } else {
+            expression.subtype = "atom";
+            expression.token = token;
+          }
+        } else
+          error({type: "unexpected-token",
+                 fallback: fallback,
+                 message: "I was expecting a word here."});
+
+        return expression;
       }
 
       function processStatement() {
@@ -210,14 +249,7 @@ var Logo = {
               if (errorsFound)
                 return;
               advance();
-              if (token.name == "word") {
-                token.tags.push("argument");
-                statement.args.push(token);
-              } else
-                error({type: "unexpected-token",
-                       fallback: statement.start,
-                       message: "I was expecting a value for " +
-                                arg + " for " + statement.name + "."});
+              statement.args.push(processExpression(statement.start));
             });
           } else
             error({type: "unknown-name",
@@ -289,7 +321,7 @@ var Logo = {
         if (stmt.name in functions) {
           var fn = functions[stmt.name];
           var options = {
-            args: stmt.args,
+            args: stmt.args.map(processExpression),
             api: {
               calcIntAmount: calcIntAmount
             },
@@ -342,12 +374,46 @@ var Logo = {
     }
 
     function calcIntAmount(word) {
+      if (typeof(word.value) == "number")
+        return word.value;
       if (word.value[0] == ':')
         word = findInScope(word);
       var number = parseInt(word.value);
       if (isNaN(number))
         throw new Logo.RuntimeError("This isn't a number.", word);
       return number;
+    }
+
+    function processExpression(expr) {
+      var subtypeMap = {
+        atom: function(expr) {
+          return expr.token;
+        },
+        binaryOperation: function(expr) {
+          var leftToken = processExpression(expr.leftOperand);
+          var rightToken = processExpression(expr.rightOperand);
+          var newToken = {
+            name: 'dynamicValue',
+            start: leftToken.start,
+            end: rightToken.end,
+            messages: [],
+            tags: []
+          };
+          switch (expr.operator.value) {
+            case '+':
+              newToken.value = calcIntAmount(leftToken) +
+                               calcIntAmount(rightToken);
+              return newToken;
+            default:
+              throw new Error('unimplemented operator: ' +
+                              expr.operator.value);
+          }
+        }
+      };
+      
+      if (expr.subtype in subtypeMap)
+        return subtypeMap[expr.subtype](expr);
+      throw new Error('unimplemented subtype: ' + expr.subtype);      
     }
 
     function processStatements(statements) {

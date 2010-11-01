@@ -48,7 +48,12 @@ test("Simple Logo.parse() tests", function() {
 
   equals(fd.type, 'call');
   equals(fd.args.length, 1);
-  equals(fd.args[0].value, '90');
+  
+  var arg = fd.args[0];
+
+  equals(arg.type, 'expression');  
+  equals(arg.subtype, 'atom');
+  equals(arg.token.value, '90');
 });
 
 test("Recursion parsing", function() {
@@ -123,6 +128,10 @@ test("Simple Logo.execute() tests", function() {
     <div name="a runtime type error, undefined variable">
       <div class="code">rt 90 fd :u</div>
       <div class="expected">rt 90, Logo.RuntimeError: I don't know what this is. @ ':u'</div>
+    </div>
+    <div name="a binary operation">
+      <div class="code">fd 1 + 1</div>
+      <div class="expected">fd 2</div>
     </div>
     <div name="a single function call">
       <div class="code">
