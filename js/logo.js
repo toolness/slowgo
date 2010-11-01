@@ -195,7 +195,7 @@ var Logo = {
         }
       }
 
-      function processExpression(fallback) {
+      function processExpression(fallback, name) {
         var expression = {
           type: 'expression'
         };
@@ -215,7 +215,7 @@ var Logo = {
             advance();
             expression.operator = token;
             advance();
-            expression.rightOperand = processExpression(fallback);
+            expression.rightOperand = processExpression(fallback, name);
           } else {
             expression.subtype = "atom";
             expression.token = token;
@@ -223,7 +223,8 @@ var Logo = {
         } else
           error({type: "unexpected-token",
                  fallback: fallback,
-                 message: "I was expecting a word here."});
+                 message: "I was expecting a word for the value of " +
+                          name + " here."});
 
         return expression;
       }
@@ -249,7 +250,8 @@ var Logo = {
               if (errorsFound)
                 return;
               advance();
-              statement.args.push(processExpression(statement.start));
+              var name = statement.name + "'s " + arg + " argument";
+              statement.args.push(processExpression(statement.start, name));
             });
           } else
             error({type: "unknown-name",
