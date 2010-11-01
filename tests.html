@@ -133,6 +133,10 @@ test("Simple Logo.execute() tests", function() {
       <div class="code">fd 1 + 1</div>
       <div class="expected">fd 2</div>
     </div>
+    <div name="a binary operation type error">
+      <div class="code">fd 1 + 2 + blah</div>
+      <div class="expected">Logo.RuntimeError: This isn't a number. @ 'blah'</div>
+    </div>
     <div name="a single function call">
       <div class="code">
         to boop :u
