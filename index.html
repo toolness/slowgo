@@ -20,7 +20,12 @@ function parseAndRenderCode(code) {
   tokens.forEach(function(token) {
     var span = $('<span class="token"></span>');
     span.addClass(token.name);
-    span.text(token.value);
+    if (token.value)
+      span.text(token.value);
+    else {
+      span.text("\u2026");
+      span.addClass("normally-hidden");
+    }
     token.query = span;
     $("#rendered-code").append(span);
   });
@@ -32,6 +37,7 @@ function parseAndRenderCode(code) {
       var message = token.messages.join(" ");
       token.query.attr("title", message);
       token.query.tipsy({gravity: 'nw'});
+      token.query.removeClass("normally-hidden");
     }
   });
 
@@ -64,6 +70,7 @@ function runCode(program) {
           e.token.query.addClass("runtime-error");
           e.token.query.attr("title", e.message);
           e.token.query.tipsy({gravity: 'nw'});
+          e.token.query.removeClass("normally-hidden");
         } else {
           if (e.stack)
             console.log(e.stack);
@@ -256,10 +263,6 @@ body {
   color: gray;
 }
 
-.token.broken {
-  text-decoration: line-through;
-}
-
 .token.unparsed {
   color: #c0c0c0;
 }
@@ -288,6 +291,10 @@ body {
   font-size: 10pt;
   border: 1px dotted gray;
   padding: 1em;
+}
+
+.normally-hidden {
+  visibility: hidden;
 }
 
 #drawing {

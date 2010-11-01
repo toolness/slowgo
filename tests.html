@@ -22,7 +22,10 @@ test("Simple Logo.tokenize() tests", function() {
   equals(tokens[3].name, "characterSymbol");
   equals(tokens[3].value, "[");
   
-  equals(tokens.length, 4);
+  equals(tokens[4].name, "end-of-file");
+  equals(tokens[4].value, null);
+
+  equals(tokens.length, 5);
 });
 
 test("Simple Logo.parse() tests", function() {
@@ -63,17 +66,20 @@ test("Recursion parsing", function() {
 });
 
 test("Simple Logo.parse() EOF error conditions", function() {
-  ["repeat",
-   "repeat 4",
-   "repeat 4 [",
-   "to",
-   "to foo",
-   "to foo :bar",
-   "fd +",
-   "fd 2 +",
-   "fd"].forEach(function(code) {
-    var program = Logo.parse(Logo.tokenize(code));
-    ok(program.errorsFound, "ensure code doesn't parse: " + code);
+  $("#qunit-fixture .parse-errors > div").each(function() {
+    var code = $(this).find(".code").text();
+    var expected = $(this).find(".expected").text();
+    var tokens = Logo.tokenize(code);
+    var program = Logo.parse(tokens);
+    if (!program.errorsFound)
+      ok(false, "code shouldn't parse, but did: " + code);
+    var errMsg = "";
+    tokens.forEach(function(token) {
+      if (token.messages.length)
+        errMsg += token.messages.join(', ') + " @ " + (token.value || "EOF")
+    });
+    equals(errMsg, expected, "code '" + code +
+           "' should produce parse error: " + errMsg);
   });
 });
 
@@ -114,6 +120,44 @@ test("Simple Logo.execute() tests", function() {
 <h2 id="qunit-userAgent"></h2>
 <ol id="qunit-tests"></ol>
 <div id="qunit-fixture">
+  <div class="parse-errors">
+    <div>
+      <div class="code">repeat</div>
+      <div class="expected">I expected a word indicating the number of times to repeat here. @ EOF</div>
+    </div>
+    <div>
+      <div class="code">repeat 4</div>
+      <div class="expected">I expected a [ here. @ EOF</div>
+    </div>
+    <div>
+      <div class="code">repeat 4 [</div>
+      <div class="expected">I couldn't find the end of this repeat block. @ [</div>
+    </div>
+    <div>
+      <div class="code">to</div>
+      <div class="expected">I was expecting the name of a new word to define. @ EOF</div>
+    </div>
+    <div>
+      <div class="code">to foo</div>
+      <div class="expected">I couldn't find the end of this definition. @ to</div>
+    </div>
+    <div>
+      <div class="code">to foo :bar</div>
+      <div class="expected">I couldn't find the end of this definition. @ to</div>
+    </div>
+    <div>
+      <div class="code">fd +</div>
+      <div class="expected">I was expecting a word for the value of fd's :amount argument here. @ +</div>
+    </div>
+    <div>
+      <div class="code">fd 2 +</div>
+      <div class="expected">I was expecting a word for the value of fd's :amount argument here. @ EOF</div>
+    </div>
+    <div>
+      <div class="code">fd</div>
+      <div class="expected">I was expecting a word for the value of fd's :amount argument here. @ EOF</div>
+    </div>
+  </div>
   <div class="execute-tests">
     <div name="a single instruction">
       <div class="code">fd 90</div>

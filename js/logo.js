@@ -68,6 +68,15 @@ var Logo = {
 
     setState(null);
     
+    tokens.push({
+      name: 'end-of-file',
+      value: null,
+      start: i,
+      end: i,
+      messages: [],
+      tags: []
+    });
+    
     return tokens;
   },
   parse: function Logo_parse(tokens) {
@@ -76,13 +85,6 @@ var Logo = {
       tokens.forEach(function(token) {
         if (token.name != 'whitespace' && token.name != 'comment')
           newTokens.push(token);
-      });
-      
-      newTokens.push({
-        name: 'end-of-file',
-        value: null,
-        tags: [],
-        messages: []
       });
 
       return newTokens;
@@ -195,7 +197,7 @@ var Logo = {
         }
       }
 
-      function processExpression(fallback, name) {
+      function processExpression(name) {
         var expression = {
           type: 'expression'
         };
@@ -215,14 +217,13 @@ var Logo = {
             advance();
             expression.operator = token;
             advance();
-            expression.rightOperand = processExpression(fallback, name);
+            expression.rightOperand = processExpression(name);
           } else {
             expression.subtype = "atom";
             expression.token = token;
           }
         } else
           error({type: "unexpected-token",
-                 fallback: fallback,
                  message: "I was expecting a word for the value of " +
                           name + " here."});
 
@@ -251,7 +252,7 @@ var Logo = {
                 return;
               advance();
               var name = statement.name + "'s " + arg + " argument";
-              statement.args.push(processExpression(statement.start, name));
+              statement.args.push(processExpression(name));
             });
           } else
             error({type: "unknown-name",
